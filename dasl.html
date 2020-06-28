@@ -1,0 +1,321 @@
+
+<!--
+    matt.thorley@gmail.com
+-->
+<html>
+<head>
+    <title>DASL using mxGraph</title>
+    <style>
+    
+        #graphContainer {
+            display: inline-block;
+        }
+
+        #yaml {
+            display: inline-block;
+            vertical-align:top;
+        }
+    
+        #sec-node {
+          font-size: 7pt;
+          border-collapse: collapse;
+          border:outset 1;
+          width: 140px;
+        }
+        
+        #sec-node td {
+          border:inset 1;
+          border: 1px solid #333333;
+          padding: 4px;
+          text-align: center;
+        }
+
+        .flow {
+            color: darkblue;
+        }
+
+        hr {
+            height:0.5px;
+            border-width:0;
+            color:gray;
+            background-color:gray;
+        }
+    </style>
+
+	<!-- Sets the basepath for the library if not in same directory -->
+	<!--script type="text/javascript">
+		mxBasePath = '../src';
+	</script-->
+
+	<!-- Loads and initializes the library -->
+    <!--script type="text/javascript" src="../src/js/mxClient.js"></script-->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/mxgraph@3.7.1/javascript/mxClient.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/3.14.0/js-yaml.min.js"></script>
+
+	<script type="text/javascript">
+
+        var graph = {};
+        function main(container)
+		{
+            graph = new mxGraph(container);
+            graph.constrainChildren = false;
+            graph.extendParents = false;
+            var parent = graph.getDefaultParent();
+			
+			// Enables HTML labels as wrapping is only available for those
+			graph.setHtmlLabels(true);
+    
+// 			var layout = new mxFastOrganicLayout(graph);
+//            layout.forceConstant = 200;
+
+            var layout = new mxHierarchicalLayout(graph, mxConstants.DIRECTION_NORTH);
+            layout.resizeParent = true;
+            layout.moveParent = true;
+            layout.parentBorder = 20;
+
+            // Creates the default style for vertexes
+            var style = graph.getStylesheet().getDefaultVertexStyle();
+            style[mxConstants.STYLE_FILLCOLOR] = "#FFFFFF";
+            style[mxConstants.STYLE_SHAPE] = mxConstants.SHAPE_RECTANGLE;
+            style[mxConstants.STYLE_PERIMETER] = mxPerimeter.RectanglePerimeter;
+            style[mxConstants.STYLE_LABEL_PADDING] = 0;
+            style[mxConstants.STYLE_STROKECOLOR] = '#FFFFFF';
+
+            // Creates the default style for edges
+            style = graph.getStylesheet().getDefaultEdgeStyle();
+            style[mxConstants.STYLE_STROKECOLOR] = '#808080';
+            //style[mxConstants.STYLE_LABEL_BACKGROUNDCOLOR] = 'white';
+            style[mxConstants.STYLE_EDGE] = mxEdgeStyle.ElbowConnector;
+            style[mxConstants.STYLE_ROUNDED] = true;
+            style[mxConstants.STYLE_FONTCOLOR] = 'black';
+            style[mxConstants.STYLE_FONTSIZE] = '10';
+
+            var model = jsyaml.load(document.getElementById("ta").value);
+            var nodeCache = {};
+
+			graph.getModel().beginUpdate();
+            try
+			{
+                // nodes
+                model[1].nodes.forEach(
+                    e => {
+                        var n = graph.insertVertex(parent, null, 
+                            getVertexAsHTML(
+                                e,
+                                getZoneForNode(model, e.zone)
+                            ));
+                        
+                        graph.updateCellSize(n, true);
+                        nodeCache[e.name] = n;
+                    }
+                );
+
+                // flows
+                model[2].flows.forEach(
+                    e => graph.insertEdge(parent, null, 
+                            getFlowAsHTML(model, e), 
+                            nodeCache[e.from], 
+                            nodeCache[e.to]) 
+//                            'whiteSpace=wrap;')
+                );
+
+//                layout.execute(nodeCache['Z1']);
+                     layout.execute(graph.getDefaultParent()); 
+			}
+			finally
+			{
+				graph.getModel().endUpdate();
+            }
+        };
+
+        function render() {
+            // remove all cells from graph
+            // graph.removeCells(graph.getChildVertices(graph.getDefaultParent()));
+        }
+
+        function getFlowAsHTML(model, f) {
+            var s = '<div class="flow"><b>[' + f.id + ']</b> ' + f.desc;
+            if (f.iassets != undefined) {
+                s = s + '<hr/>';
+                f.iassets.forEach( 
+                    e => {
+                        var ia = getIAForFlow(model, e);
+                        if (ia != undefined) {
+                            s = s + '[' + ia.id + '] ' + ia.name;
+                            s = s + ',<br/>';
+                        }
+                    }
+                );
+            }
+            if (f.protocol != undefined) {
+                s = s + '<hr/>';
+                s = s + '<i>' + f.protocol + '</i>';
+            }
+            s = s + '</div>';
+            return s;
+        }
+
+        function getVertexAsHTMLv1(id, name) {
+            var s = '<table id="sec-node">' +
+                    '<tr>' +
+                    '    <td width="30%">' + id + '</td> ' +
+                    '    <td rowspan="2">' + name + '</td>' +
+                    '    <td rowspan="2" width="15%" bgcolor="#FF8484">H</td>' +
+                    '</tr>' +
+                    '<tr>' +
+                    '    <td>PAT-01</td>' +
+                    '</tr>' +
+                    '</table>';
+            return s;
+        }
+
+        function getVertexAsHTML(e, zone) {
+
+            var trustColour = '#000000';
+            if (e.trust=='U')
+                trustColour = '#7C7C7C';
+            else if (e.trust=='L')
+                trustColour = '#FF0000';
+            else if (e.trust=='M')
+                trustColour = '#00FF00';
+            else if (e.trust=='H')
+                trustColour = '#FF8484';
+
+            var s = '<table id="sec-node">' +
+                    '<tr>' +
+                        '<td colspan="2" style="text-align:left" bgcolor="#DCDCDC">' + zone + '</td>' +
+                        '<td rowspan="3" width="12%" bgcolor="' + trustColour + '">' + e.trust + '</td>' +
+                    '</tr>' +
+                    '<tr>' +
+                    '    <td width="30%">' + e.id + '</td> ' +
+                    '    <td rowspan="2"><b>' + e.name + '</b><br/>' + e.tech + '</td>' +
+                    '</tr>' +
+                    '<tr>' +
+                    '    <td>PAT128</td>' +
+                    '</tr>' + 
+                    '</table>';
+            return s;
+        }
+
+        // object model support functions
+        function getIAForFlow(model, id) {
+            var ia = model[0].information_assets.find( e => e.id == id );
+            return ia;   
+        }
+
+        function getZoneForNode(model, id) {
+            var z = model[3].zones.find( e => e.id == id );
+            if (z == undefined)
+                return "Unknown Zone";
+            return z.name;
+        };
+
+	</script>
+</head>
+
+<!-- Page passes the container for the graph to the program -->
+<body onload="main(document.getElementById('graphContainer'))">
+
+	<!-- Creates a container for the graph with a grid wallpaper -->
+	<div id="graphContainer"
+		style="position:relative;overflow:hidden;background:url('editors/images/grid.gif');cursor:default;">
+	</div>
+	<div id="yaml" onchange="render();">
+		<textarea id="ta" rows="60" cols="80">
+---
+- information_assets: 
+   - id: IA1
+     name: "Device Token"
+     c: Confidential
+     i: Trusted
+   - id: IA2
+     name: "Payment"
+     c: Confidential
+     i: Trusted
+   - id: IA3
+     name: "Accounts"
+     c: Confidential 
+     i: Trusted
+   - id: IA4
+     name: "Goals"
+     c: Confidential
+     i: Trusted
+   - id: IA5
+     name: "Token - JWT"
+     c: Confidential
+     i: Trusted
+
+- nodes:
+   - id: N1 
+     zone: EXT
+     name: Mobile
+     tech: "iOS/Android"
+     trust: U
+     iassets: [ IA1 ]     
+     controls: [ PL.WAF.C01 ]
+   - { id: N2, zone: SAAS, name: WAF, tech: "Imperva", trust: L }
+   - { id: N3, zone: GCP, name: IngressGateway, tech: "Istio", trust: M }
+   - { id: N4, zone: GCP, name: PaymentAPI, tech: "µservice", trust: M }
+   - { id: N5, zone: GCP, name: AccountsAPI, tech: "µservice", trust: M }
+   - { id: N6, zone: GCP, name: EntitlementsAPI, tech: "µservice", trust: M }
+   - { id: N7, zone: OP, name: eAPI, tech: "IBM Datapower", trust: H }
+   - { id: N8, zone: OP, name: CTM, tech: "Core", trust: H }
+   - { id: N9, zone: GCP,name: TexAPI, tech: "µservice", trust: M }
+   - { id: N10, zone: GCP, name: GoalAPI, tech: "µservice", trust: M }
+   
+- flows:
+   - id: F1
+     desc: "Basic Banking"
+     from: Mobile
+     to: WAF
+     protocol: "gRPC/HTTPS"
+     iassets: [ IA1, IA2, IA3 ]
+   - id: F2
+     desc: "Payments, Tokens"
+     from: WAF
+     to: IngressGateway       
+     protocol: "gRPC/HTTPS"
+     iassets: [ IA1, IA2 ]
+   - { id: F3, desc: "Payments, Tokens", from: IngressGateway, to: PaymentAPI, iassets: [IA3, IA4 ] }
+   - { id: F4, desc: "Accounts", from: IngressGateway, to: AccountsAPI }
+   - { id: F5, desc: "Tokens", from: IngressGateway, to: TexAPI }
+   - { id: F6, desc: "Payments", from: eAPI, to: TexAPI }
+   - { id: F7, desc: "Transactions", from: eAPI, to: CTM }
+   - { id: F8, desc: "Authorisation", from: AccountsAPI, to: EntitlementsAPI }
+   - { id: F9, desc: "Transactions", from: AccountsAPI, to: eAPI }
+   - { id: F10, desc: "Goals", from: IngressGateway, to: GoalAPI }
+   
+- zones:
+   - { id: EXT, name: "External" }
+   - { id: SAAS, name: "SaaS" }
+   - { id: GCP, name: "GCP" }
+   - { id: GCP, name: "GCP" }
+   - { id: OP, name: "On Premise" }
+   
+- controls:
+   - id: PL.WAF.C01
+     name: "Enc. in transit"
+     refs: [ CIS6.1, NIST800-53.AC.2-01 ]
+   - id: PL.MSVC.C01
+     name: "Payload validation"
+     refs: [ CIS3.1, NIST800-53.SS.9-01 ]
+
+</textarea>
+	</div>
+<!-- TODOs
+
+- cloud type, trust level, call out to controls,  effectivness, build time, runtime time,  deploy time statusw
+- summary set of key controls  - 
+
+- use case -> threat 
+
+- layout with groups or containers
+- derive information asset names on flows from ia association
+- add ias to nodes
+- add components
+- add zones to nodes
+-->
+
+</body>
+</html>
+

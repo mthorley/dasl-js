@@ -253,13 +253,13 @@
      trust: U
      iassets: [ IA1 ]     
      controls: [ PL.WAF.C01 ]
-   - { id: N2, zone: SAAS, name: WAF, tech: "Imperva", trust: L }
+   - { id: N2, zone: SAAS, name: WAF, tech: "AWS WAF", trust: L }
    - { id: N3, zone: GCP, name: IngressGateway, tech: "Istio", trust: M }
    - { id: N4, zone: GCP, name: PaymentAPI, tech: "µservice", trust: M }
    - { id: N5, zone: GCP, name: AccountsAPI, tech: "µservice", trust: M }
    - { id: N6, zone: GCP, name: EntitlementsAPI, tech: "µservice", trust: M }
-   - { id: N7, zone: OP, name: eAPI, tech: "IBM Datapower", trust: H }
-   - { id: N8, zone: OP, name: CTM, tech: "Core", trust: H }
+   - { id: N7, zone: OP, name: eAPI, tech: "API gateway", trust: H }
+   - { id: N8, zone: OP, name: Core, tech: "Core", trust: H }
    - { id: N9, zone: GCP,name: TexAPI, tech: "µservice", trust: M }
    - { id: N10, zone: GCP, name: GoalAPI, tech: "µservice", trust: M }
    
@@ -280,7 +280,7 @@
    - { id: F4, desc: "Accounts", from: IngressGateway, to: AccountsAPI }
    - { id: F5, desc: "Tokens", from: IngressGateway, to: TexAPI }
    - { id: F6, desc: "Payments", from: eAPI, to: TexAPI }
-   - { id: F7, desc: "Transactions", from: eAPI, to: CTM }
+   - { id: F7, desc: "Transactions", from: eAPI, to: Core }
    - { id: F8, desc: "Authorisation", from: AccountsAPI, to: EntitlementsAPI }
    - { id: F9, desc: "Transactions", from: AccountsAPI, to: eAPI }
    - { id: F10, desc: "Goals", from: IngressGateway, to: GoalAPI }
